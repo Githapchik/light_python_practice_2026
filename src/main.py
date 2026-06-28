@@ -3,13 +3,13 @@ import os
 
 def main():
     # Проверка количества аргументов командной строки
-    if len(sys.argv) != 2:
+    if len(sys.argv) < 2:
         print("Ошибка! Укажите путь к папке")
-        print("Использование: python main.py путь к нужной папке")
+        print("Использование: python main.py путь_к_нужной_папке фильтр")
         sys.exit(1)
 
-    # Получаем путь из аргументов командной строки
     folder_path = sys.argv[1]
+    filter_pattern = sys.argv[2] if len(sys.argv) > 2 else None
 
     # Проверка существования пути
     if not os.path.exists(folder_path):
@@ -22,10 +22,33 @@ def main():
         sys.exit(1)
 
     print(f"Успешный старт программы. Выбранная папка: {folder_path}")
-    list_directory(folder_path)
+    if filter_pattern:
+        print(f"Применяется фильтр: {filter_pattern}")
 
-def list_directory(path, indent_level=0):
-    indent = "  " * indent_level  # отступ: 2 пробела на уровень для визуализации вложенности
+    stats = {
+        "files": 0,
+        "dirs": 0,
+        "size": 0
+    }
+
+    list_directory(folder_path, filter_pattern, stats)
+
+    print("\n--- Статистика ---")
+    print(f"Папок: {stats['dirs']}")
+    print(f"Файлов: {stats['files']}")
+    print(f"Общий размер: {stats['size']} байт ({_format_size(stats['size'])})")
+
+
+def _format_size(size_bytes):
+    for unit in ["B", "KB", "MB", "GB"]:
+        if size_bytes < 1024.0:
+            return f"{size_bytes:.2f} {unit}"
+        size_bytes /= 1024.0
+    return f"{size_bytes:.2f} TB"
+
+
+def list_directory(path, filter_pattern, stats, indent_level=0):
+    indent = "  " * indent_level
 
     try:
         entries = os.listdir(path)
@@ -39,18 +62,35 @@ def list_directory(path, indent_level=0):
         print(f"{indent}[Ошибка доступа: {e}]")
         return
 
-    entries.sort()  # Сортировка в алфавитном порядке
+    entries.sort()
 
     for entry in entries:
         full_path = os.path.join(path, entry)
 
+        if filter_pattern is not None:
+            if filter_pattern.startswith("."):
+                # Фильтр по расширению
+                if not entry.lower().endswith(filter_pattern.lower()):
+                    continue
+            else:
+                # Фильтр по имени
+                if filter_pattern.lower() not in entry.lower():
+                    continue
+
         if os.path.isdir(full_path):
-            # Вывод Папки. Папки помечаются слэшем 
+            stats["dirs"] += 1
             print(f"{indent}{entry}/")
-            list_directory(full_path, indent_level + 1)
+            list_directory(full_path, filter_pattern, stats, indent_level + 1)
         else:
-            # Вывод файл
-            print(f"{indent}{entry}")
+            stats["files"] += 1
+            try:
+                file_size = os.path.getsize(full_path)
+                stats["size"] += file_size
+                print(f"{indent}{entry} ({file_size} B)")
+            except OSError:
+                # Если не удалось получить размер, просто выводится имя
+                print(f"{indent}{entry}")
+
 
 if __name__ == "__main__":
     main()
