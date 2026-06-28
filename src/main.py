@@ -1,13 +1,20 @@
 import sys
 import os
 
-def main():
-    # Проверка количества аргументов командной строки
-    if len(sys.argv) < 2:
-        print("Ошибка! Укажите путь к папке")
-        print("Использование: python main.py путь_к_нужной_папке фильтр")
-        sys.exit(1)
+def show_help():
+    print("Инструкция по запуску:")
+    print("python main.py путь_к_папке фильтр")
+    print()
+    print("Параметры:")
+    print("путь_к_папке — обязательный путь для анализа")
+    print("фильтр — необязательный фильтр (по расширению или имени)")
+    print()
+    print("Примеры:")
+    print("python main.py C:\\Users\\user - вариант без фильтра")
+    print("python main.py C:\\Users\\user .txt - вариант с фильтром по расширению")
+    print("python main.py C:\\Users\\user report - вариант с фильтром по имени")
 
+def main():
     folder_path = sys.argv[1]
     filter_pattern = sys.argv[2] if len(sys.argv) > 2 else None
 
@@ -24,6 +31,8 @@ def main():
     print(f"Успешный старт программы. Выбранная папка: {folder_path}")
     if filter_pattern:
         print(f"Применяется фильтр: {filter_pattern}")
+    else:
+        print("Фильтр не указан — отображаются все элементы.")
 
     stats = {
         "files": 0,
@@ -67,13 +76,14 @@ def list_directory(path, filter_pattern, stats, indent_level=0):
     for entry in entries:
         full_path = os.path.join(path, entry)
 
+        # Фильтрация
         if filter_pattern is not None:
             if filter_pattern.startswith("."):
                 # Фильтр по расширению
                 if not entry.lower().endswith(filter_pattern.lower()):
                     continue
             else:
-                # Фильтр по имени
+                # Фильтр по подстроке в имени
                 if filter_pattern.lower() not in entry.lower():
                     continue
 
