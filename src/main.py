@@ -17,8 +17,8 @@ def human_size(size):
 
 def print_help():
     print("Утилита для просмотра содержимого папки")
-    print("Запуск: python laba.py <путь к папке> [фильтр]")
-    print("Пример: python laba.py C:\\Temp .txt")
+    print("Запуск: python main.py <путь к папке> [фильтр]")
+    print("Пример: python main.py C:\\Temp .txt")
     print("Фильтр - необязательный параметр, ищет файлы по имени (например .txt)")
 
 def list_dir(path, level=0, filter_str=""):
