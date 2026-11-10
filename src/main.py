@@ -1,106 +1,114 @@
 import sys
 import os
+import datetime
 
-def show_help():
-    print("Инструкция по запуску:")
-    print("python main.py путь_к_папке фильтр")
-    print()
-    print("Параметры:")
-    print("путь_к_папке — обязательный путь для анализа")
-    print("фильтр — необязательный фильтр (по расширению или имени)")
-    print()
-    print("Примеры:")
-    print("python main.py C:\\Users\\user - вариант без фильтра")
-    print("python main.py C:\\Users\\user .txt - вариант с фильтром по расширению")
-    print("python main.py C:\\Users\\user report - вариант с фильтром по имени")
+# счётчики для отчёта
+files_count = 0
+dirs_count = 0
+total_size = 0
 
-def main():
-    folder_path = sys.argv[1]
-    filter_pattern = sys.argv[2] if len(sys.argv) > 2 else None
-
-    # Проверка существования пути
-    if not os.path.exists(folder_path):
-        print(f"Ошибка: путь '{folder_path}' не существует.")
-        sys.exit(1)
-
-    # Проверяем, что это папка, а не файл
-    if not os.path.isdir(folder_path):
-        print(f"Ошибка: '{folder_path}' — не является папкой.")
-        sys.exit(1)
-
-    print(f"Успешный старт программы. Выбранная папка: {folder_path}")
-    if filter_pattern:
-        print(f"Применяется фильтр: {filter_pattern}")
+def human_size(size):
+    if size < 1024:
+        return str(size) + " Б"
+    elif size < 1024 * 1024:
+        return str(round(size / 1024, 1)) + " КБ"
     else:
-        print("Фильтр не указан — отображаются все элементы.")
+        return str(round(size / 1024 / 1024, 1)) + " МБ"
 
-    stats = {
-        "files": 0,
-        "dirs": 0,
-        "size": 0
-    }
+def print_help():
+    print("Утилита для просмотра содержимого папки")
+    print("Запуск: python laba.py <путь к папке> [фильтр]")
+    print("Пример: python laba.py C:\\Temp .txt")
+    print("Фильтр - необязательный параметр, ищет файлы по имени (например .txt)")
 
-    list_directory(folder_path, filter_pattern, stats)
-
-    print("\n--- Статистика ---")
-    print(f"Папок: {stats['dirs']}")
-    print(f"Файлов: {stats['files']}")
-    print(f"Общий размер: {stats['size']} байт ({_format_size(stats['size'])})")
-
-
-def _format_size(size_bytes):
-    for unit in ["B", "KB", "MB", "GB"]:
-        if size_bytes < 1024.0:
-            return f"{size_bytes:.2f} {unit}"
-        size_bytes /= 1024.0
-    return f"{size_bytes:.2f} TB"
-
-
-def list_directory(path, filter_pattern, stats, indent_level=0):
-    indent = "  " * indent_level
+def list_dir(path, level=0, filter_str=""):
+    # рекурсивный обход папки
+    global files_count, dirs_count, total_size
 
     try:
-        entries = os.listdir(path)
+        items = os.listdir(path)
     except PermissionError:
-        print(f"{indent}[Нет доступа к содержимому]")
-        return
-    except FileNotFoundError:
-        print(f"{indent}[Папка не найдена]")
-        return
-    except OSError as e:
-        print(f"{indent}[Ошибка доступа: {e}]")
-        return
+        return  # нет доступа - просто пропускаем папку
 
-    entries.sort()
+    items.sort()
 
-    for entry in entries:
-        full_path = os.path.join(path, entry)
-
-        # Фильтрация
-        if filter_pattern is not None:
-            if filter_pattern.startswith("."):
-                # Фильтр по расширению
-                if not entry.lower().endswith(filter_pattern.lower()):
-                    continue
-            else:
-                # Фильтр по подстроке в имени
-                if filter_pattern.lower() not in entry.lower():
-                    continue
+    for name in items:
+        full_path = os.path.join(path, name)
+        indent = "    " * level  # отступ для вложенности
 
         if os.path.isdir(full_path):
-            stats["dirs"] += 1
-            print(f"{indent}{entry}/")
-            list_directory(full_path, filter_pattern, stats, indent_level + 1)
+            dirs_count += 1
+            print(indent + name + "/")
+            list_dir(full_path, level + 1, filter_str)
         else:
-            stats["files"] += 1
-            try:
-                file_size = os.path.getsize(full_path)
-                stats["size"] += file_size
-                print(f"{indent}{entry} ({file_size} B)")
-            except OSError:
-                # Если не удалось получить размер, просто выводится имя
-                print(f"{indent}{entry}")
+            # если задан фильтр - показываем только подходящие файлы
+            if filter_str != "" and filter_str.lower() not in name.lower():
+                continue
+            size = os.path.getsize(full_path)
+            files_count += 1
+            total_size += size
+            print(indent + name + " (" + human_size(size) + ")")
 
+def main():
+    # проверяем аргументы
+    if len(sys.argv) < 2:
+        print("Ошибка: не указан путь к папке!")
+        print()
+        print_help()
+        sys.exit(1)
+
+    # справка
+    if sys.argv[1] == "-h" or sys.argv[1] == "--help":
+        print_help()
+        sys.exit(0)
+
+    path = sys.argv[1]
+
+    # фильтр, если есть
+    filter_str = ""
+    if len(sys.argv) > 2:
+        filter_str = sys.argv[2]
+
+    # проверяем путь
+    if not os.path.exists(path):
+        print("Ошибка: такой папки не существует:", path)
+        sys.exit(1)
+
+    if not os.path.isdir(path):
+        print("Ошибка: это не папка:", path)
+        sys.exit(1)
+
+    print("Содержимое папки:", os.path.abspath(path))
+    if filter_str != "":
+        print("Фильтр:", filter_str)
+    print()
+
+    # обход
+    list_dir(path, 0, filter_str)
+
+    # отчёт
+    print()
+    print("======== ОТЧЁТ ========")
+    print("Папок:", dirs_count)
+    print("Файлов:", files_count)
+    print("Общий размер:", human_size(total_size))
+    print("=======================")
+
+    # сохраняем отчёт в txt
+    report_name = "report.txt"
+    with open(report_name, "w", encoding="utf-8") as f:
+        f.write("Журнал работы утилиты\n")
+        f.write("Дата: " + datetime.datetime.now().strftime("%d.%m.%Y %H:%M") + "\n")
+        f.write("Папка: " + os.path.abspath(path) + "\n")
+        if filter_str != "":
+            f.write("Фильтр: " + filter_str + "\n")
+        f.write("\n")
+        f.write("Папок: " + str(dirs_count) + "\n")
+        f.write("Файлов: " + str(files_count) + "\n")
+        f.write("Общий размер: " + human_size(total_size) + "\n")
+
+    print()
+    print("Отчёт сохранён в файл:", report_name)
 
 if __name__ == "__main__":
     main()
